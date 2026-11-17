@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Карта — CoworkSpace</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=ru_RU" type="text/javascript"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">CoworkSpace</a>
+    <nav>
+      <a href="index.html"   data-nav="index.html">Главная</a>
+      <a href="map.html"     data-nav="map.html">Карта</a>
+      <a href="list.html"    data-nav="list.html">Список</a>
+      <a href="profile.html" data-nav="profile.html">Профиль <span id="nav-badge" class="badge" hidden>0</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="crumbs">
+      <a href="index.html">Главная</a> <span>›</span> <span>Карта</span>
+    </div>
+    <h1>Карта коворкингов</h1>
+    <p class="muted">Кликните по метке — в балуне есть переходы на карточку и сразу на бронирование.</p>
+    <div id="map"></div>
+    <div class="btn-row">
+      <a class="btn secondary" href="list.html">Перейти к списку →</a>
+      <a class="btn secondary" href="index.html">← На главную</a>
+    </div>
+  </main>
+
+  <script src="shared.js"></script>
+</body>
+</html>

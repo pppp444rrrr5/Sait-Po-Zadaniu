@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Локации — CoworkSpace</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">CoworkSpace</a>
+    <nav>
+      <a href="index.html"   data-nav="index.html">Главная</a>
+      <a href="map.html"     data-nav="map.html">Карта</a>
+      <a href="list.html"    data-nav="list.html">Локации</a>
+      <a href="profile.html" data-nav="profile.html">Профиль <span id="nav-badge" class="badge" hidden>0</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="crumbs">
+      <a href="index.html">Главная</a> <span>›</span> <span>Локации</span>
+    </div>
+
+    <!-- Панель действий (как на praktik.work) -->
+    <div class="actions-bar">
+      <button class="btn secondary" id="filters-toggle">Фильтры</button>
+      <a class="btn secondary" href="index.html#contacts">Контакты</a>
+      <a class="btn" href="map.html">Забронировать</a>
+      <a class="btn secondary" href="index.html#become-resident">Стать резидентом</a>
+      <a class="btn secondary" href="index.html#contact-us">Связаться с нами</a>
+      <a class="btn secondary" href="profile.html">Мои брони <span id="nav-badge-2" class="badge" hidden>0</span></a>
+    </div>
+
+    <!-- Панель фильтров -->
+    <div class="filters-panel" id="filters-panel" hidden>
+      <div class="filter-group">
+        <label for="filter-city">Город</label>
+        <select id="filter-city">
+          <option value="">Все города</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-price">Цена до</label>
+        <input id="filter-price" type="number" min="0" step="50" placeholder="₽ / час" />
+      </div>
+      <div class="filter-group">
+        <label for="filter-search">Поиск</label>
+        <input id="filter-search" type="text" placeholder="Название или адрес" />
+      </div>
+      <button class="btn secondary" id="filters-reset">Сбросить</button>
+    </div>
+
+    <h1>Локации</h1>
+    <p class="muted" id="results-count">Загрузка…</p>
+
+    <div class="grid" id="places-grid"></div>
+
+    <div class="btn-row">
+      <a class="btn secondary" href="map.html">← На карту</a>
+      <a class="btn secondary" href="profile.html">Мои брони →</a>
+    </div>
+  </main>
+
+  <script src="shared.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const places = loadPlaces();
+      const grid = document.getElementById('places-grid');
+      const countEl = document.getElementById('results-count');
+      const citySel = document.getElementById('filter-city');
+      const priceInp = document.getElementById('filter-price');
+      const searchInp = document.getElementById('filter-search');
+      const toggle = document.getElementById('filters-toggle');
+      const panel = document.getElementById('filters-panel');
+      const reset = document.getElementById('filters-reset');
+
+      // Бейдж в панели действий
+      function updateActionBadge() {
+        const b = document.getElementById('nav-badge-2');
+        if (!b) return;
+        const n = loadBookings().length;
+        b.hidden = n === 0;
+        b.textContent = n;
+      }
+      updateActionBadge();
+
+      // Заполняем города из адресов (берём часть после «г.» или из начала)
+      const cities = new Set();
+      places.forEach(p => {
+        const m = p.address.match(/^(?:г\.\s*)?([А-ЯЁа-яё\-]+)/);
+        if (m) cities.add(m[1]);
+      });
+      [...cities].sort().forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        citySel.appendChild(opt);
+      });
+
+      function render() {
+        const city = citySel.value;
+        const maxPrice = priceInp.value ? Number(priceInp.value) : Infinity;
+        const q = searchInp.value.trim().toLowerCase();
+
+        const filtered = places.filter(p => {
+          if (maxPrice && p.price > maxPrice) return false;
+          if (city && !p.address.toLowerCase().includes(city.toLowerCase())) return false;
+          if (q) {
+            const hay = (p.name + ' ' + p.address + ' ' + (p.desc || '')).toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+
+        countEl.textContent = `Найдено локаций: ${filtered.length} из ${places.length}`;
+
+        if (!filtered.length) {
+          grid.innerHTML = `<div class="panel"><p class="muted">Ничего не найдено. Попробуйте изменить фильтры.</p></div>`;
+          return;
+        }
+
+        grid.innerHTML = filtered.map(p => `
+          <a class="card" href="place.html?id=${p.id}">
+            <h3>${p.name}</h3>
+            <div class="meta">${p.address}</div>
+            ${p.desc ? `<div class="meta">${p.desc}</div>` : ''}
+            <div class="price">${p.price} ₽ / час</div>
+          </a>
+        `).join('');
+      }
+
+      toggle.addEventListener('click', () => {
+        panel.hidden = !panel.hidden;
+      });
+      reset.addEventListener('click', () => {
+        citySel.value = '';
+        priceInp.value = '';
+        searchInp.value = '';
+        render();
+      });
+
+      [citySel, priceInp, searchInp].forEach(el => {
+        el.addEventListener('input', render);
+        el.addEventListener('change', render);
+      });
+
+      render();
+    });
+  </script>
+</body>
+</html>

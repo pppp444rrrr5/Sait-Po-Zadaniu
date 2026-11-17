@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Бронирование — CoworkSpace</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">CoworkSpace</a>
+    <nav>
+      <a href="index.html"   data-nav="index.html">Главная</a>
+      <a href="map.html"     data-nav="map.html">Карта</a>
+      <a href="list.html"    data-nav="list.html">Список</a>
+      <a href="profile.html" data-nav="profile.html">Профиль <span id="nav-badge" class="badge" hidden>0</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="crumbs" id="crumbs">
+      <a href="index.html">Главная</a> <span>›</span>
+      <a href="list.html">Список</a> <span>›</span>
+      <span>Бронирование</span>
+    </div>
+    <div id="booking-content"></div>
+  </main>
+
+  <script src="shared.js"></script>
+  <script>
+    const SLOTS = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const id = getParam('id');
+      const place = loadPlaces().find(p => p.id === id);
+      const box = document.getElementById('booking-content');
+
+      if (!place) {
+        box.innerHTML = `
+          <h1>Место не найдено</h1>
+          <p><a class="btn secondary" href="list.html">← К списку</a></p>
+        `;
+        return;
+      }
+
+      document.title = 'Бронирование: ' + place.name;
+
+      document.getElementById('crumbs').innerHTML = `
+        <a href="index.html">Главная</a> <span>›</span>
+        <a href="list.html">Список</a> <span>›</span>
+        <a href="place.html?id=${place.id}">${place.name}</a> <span>›</span>
+        <span>Бронирование</span>
+      `;
+
+      const state = { date: todayStr(), slots: [] };
+
+      box.innerHTML = `
+        <h1>Бронирование: ${place.name}</h1>
+        <div class="detail">
+          <div class="panel">
+            <h2>1. Выберите дату</h2>
+            <div class="calendar" id="calendar"></div>
+          </div>
+          <div class="panel">
+            <h2>2. Выберите время</h2>
+            <div class="muted">${place.price} ₽ / час</div>
+            <div class="slots" id="slots"></div>
+            <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div>Итого: <b id="total">0 ₽</b></div>
+              <button class="btn" id="pay-btn" disabled>Оплатить и забронировать</button>
+            </div>
+            <div class="btn-row">
+              <a class="btn secondary" href="place.html?id=${place.id}">← К месту</a>
+              <a class="btn secondary" href="profile.html">Мои брони →</a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderCalendar();
+      renderSlots();
+
+      function renderCalendar() {
+        const cal = document.getElementById('calendar');
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const first = new Date(year, month, 1);
+        const startDow = (first.getDay() + 6) % 7;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const dows = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+        let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
+        for (let i = 0; i < startDow; i++) html += `<div></div>`;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const isPast = dateStr < todayStr();
+          const selected = dateStr === state.date;
+          html += `<div class="cal-day ${isPast?'disabled':''} ${selected?'selected':''}"
+                        data-date="${dateStr}">${d}</div>`;
+        }
+        cal.innerHTML = html;
+
+        cal.querySelectorAll('.cal-day:not(.disabled)').forEach(el => {
+          el.addEventListener('click', () => {
+            state.date = el.dataset.date;
+            state.slots = [];
+            renderCalendar();
+            renderSlots();
+          });
+        });
+      }
+
+      function renderSlots() {
+        const taken = loadBookings()
+          .filter(b => b.placeId === place.id && b.date === state.date)
+          .flatMap(b => b.slots);
+
+        const slotsEl = document.getElementById('slots');
+        slotsEl.innerHTML = SLOTS.map(s => {
+          const isBooked = taken.includes(s);
+          const isSel = state.slots.includes(s);
+          return `<div class="slot ${isBooked?'booked':''} ${isSel?'selected':''}"
+                       data-slot="${s}">${s}</div>`;
+        }).join('');
+
+        slotsEl.querySelectorAll('.slot:not(.booked)').forEach(el => {
+          el.addEventListener('click', () => {
+            const s = el.dataset.slot;
+            const i = state.slots.indexOf(s);
+            if (i >= 0) state.slots.splice(i, 1);
+            else state.slots.push(s);
+            renderSlots();
+          });
+        });
+        updateTotal();
+      }
+
+      function updateTotal() {
+        const total = state.slots.length * place.price;
+        document.getElementById('total').textContent = total + ' ₽';
+        document.getElementById('pay-btn').disabled = state.slots.length === 0;
+      }
+
+      document.getElementById('pay-btn').addEventListener('click', () => {
+        const total = state.slots.length * place.price;
+        const btn = document.getElementById('pay-btn');
+        btn.disabled = true;
+        btn.textContent = 'Обработка оплаты…';
+
+        setTimeout(() => {
+          const bookings = loadBookings();
+          bookings.push({
+            id: 'b' + Date.now(),
+            placeId: place.id,
+            placeName: place.name,
+            date: state.date,
+            slots: [...state.slots].sort(),
+            total,
+            createdAt: new Date().toISOString(),
+          });
+          saveBookings(bookings);
+          toast(`✅ Оплачено ${total} ₽. Бронь подтверждена.`);
+          setTimeout(() => location.href = 'profile.html', 700);
+        }, 900);
+      });
+    });
+  </script>
+</body>
+</html>

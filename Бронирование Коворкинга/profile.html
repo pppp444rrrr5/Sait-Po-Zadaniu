@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Профиль — CoworkSpace</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">CoworkSpace</a>
+    <nav>
+      <a href="index.html"   data-nav="index.html">Главная</a>
+      <a href="map.html"     data-nav="map.html">Карта</a>
+      <a href="list.html"    data-nav="list.html">Список</a>
+      <a href="profile.html" data-nav="profile.html">Профиль <span id="nav-badge" class="badge" hidden>0</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="crumbs">
+      <a href="index.html">Главная</a> <span>›</span> <span>Профиль</span>
+    </div>
+    <h1>Мои бронирования</h1>
+    <p class="muted" id="count">Всего броней: 0</p>
+    <div class="panel" id="bookings-list"></div>
+    <div class="btn-row">
+      <a class="btn secondary" href="map.html">← На карту</a>
+      <a class="btn secondary" href="list.html">К списку мест →</a>
+    </div>
+  </main>
+
+  <script src="shared.js"></script>
+  <script>
+    function render() {
+      const bookings = loadBookings().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      document.getElementById('count').textContent = 'Всего броней: ' + bookings.length;
+
+      const list = document.getElementById('bookings-list');
+      if (!bookings.length) {
+        list.innerHTML = `
+          <p class="muted">Пока нет броней.</p>
+          <div class="btn-row">
+            <a class="btn" href="list.html">Выбрать место →</a>
+            <a class="btn secondary" href="map.html">Открыть карту</a>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = bookings.map(b => `
+        <div class="booking-row">
+          <div class="info">
+            <b>${b.placeName}</b>
+            <small>${b.date} · ${b.slots.join(', ')} · ${b.total} ₽</small>
+          </div>
+          <div style="display:flex; gap:8px">
+            <a class="btn secondary" href="place.html?id=${b.placeId}">К месту</a>
+            <a class="btn secondary" href="booking.html?id=${b.placeId}">Ещё слот</a>
+            <button class="btn danger" data-cancel="${b.id}">Отменить</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('[data-cancel]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (!confirm('Отменить бронирование?')) return;
+          saveBookings(loadBookings().filter(b => b.id !== btn.dataset.cancel));
+          updateBadge();
+          toast('Бронь отменена');
+          render();
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', render);
+  </script>
+</body>
+</html>

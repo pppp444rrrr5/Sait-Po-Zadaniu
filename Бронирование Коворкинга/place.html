@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Локация — CoworkSpace</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=YOUR_API_KEY&lang=ru_RU" type="text/javascript"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">CoworkSpace</a>
+    <nav>
+      <a href="index.html"   data-nav="index.html">Главная</a>
+      <a href="map.html"     data-nav="map.html">Карта</a>
+      <a href="list.html"    data-nav="list.html">Локации</a>
+      <a href="profile.html" data-nav="profile.html">Профиль <span id="nav-badge" class="badge" hidden>0</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="crumbs" id="crumbs">
+      <a href="index.html">Главная</a> <span>›</span>
+      <a href="list.html">Локации</a> <span>›</span>
+      <span>…</span>
+    </div>
+
+    <div id="place-content"></div>
+  </main>
+
+  <script src="shared.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const id = getParam('id');
+      const place = loadPlaces().find(p => p.id === id);
+      const box = document.getElementById('place-content');
+
+      if (!place) {
+        box.innerHTML = `
+          <h1>Локация не найдена</h1>
+          <p><a class="btn secondary" href="list.html">← К локациям</a></p>
+        `;
+        return;
+      }
+
+      document.title = place.name + ' — CoworkSpace';
+
+      document.getElementById('crumbs').innerHTML = `
+        <a href="index.html">Главная</a> <span>›</span>
+        <a href="list.html">Локации</a> <span>›</span>
+        <span>${place.name}</span>
+      `;
+
+      // «Фичи» — статический набор, как в praktik.work
+      const features = [
+        { icon: '🪑', title: 'Мебель',       text: 'Полностью меблированные рабочие места, готовые к работе в день заезда.' },
+        { icon: '🧹', title: 'Клининг',      text: 'Ежедневная уборка, расходные материалы включены.' },
+        { icon: '🔒', title: 'Безопасность', text: 'Видеонаблюдение и контроль доступа в помещения.' },
+        { icon: '📶', title: 'Интернет',     text: 'Высокоскоростной Wi-Fi на всей площади локации.' },
+        { icon: '☕', title: 'Кофе',         text: 'Горячие напитки без ограничений, свежая выпечка и фрукты.' },
+        { icon: '🅿️', title: 'Парковка',     text: 'Бесплатная открытая парковка у локации.' },
+      ];
+
+      // Тарифы (упрощённые аналоги praktik.work)
+      const base = place.price;
+      const tariffs = [
+        {
+          name: 'День',
+          period: 'Дневной тариф',
+          price: `${base * 8} ₽`,
+          features: ['Любое свободное место', 'Доступ с 9:00 до 21:00', 'Горячие напитки', 'Снэки и фрукты'],
+        },
+        {
+          name: 'Гибкий',
+          period: 'Месячная подписка',
+          price: `${base * 8 * 12} ₽`,
+          features: ['Любое свободное место', 'Доступ 24/7', 'Переговорные 3 ч/мес', 'Горячие напитки', 'Мероприятия для резидентов'],
+          highlight: true,
+        },
+        {
+          name: 'Фикс',
+          period: 'Месячная подписка',
+          price: `${base * 8 * 16} ₽`,
+          features: ['Фиксированное место', 'Доступ 24/7', 'Переговорные 3 ч/мес', 'Безлимит печати', 'Ящик для вещей'],
+        },
+      ];
+
+      // Переговорные (примеры для структуры)
+      const rooms = [
+        { name: 'Переговорная №1', seats: 5, price: '1 200 ₽/час', features: ['Wi-Fi', 'ТВ 4K с AirPlay', 'Флип-чарт', 'Кофе без ограничений'] },
+        { name: 'Переговорная №2', seats: 6, price: '1 300 ₽/час', features: ['Wi-Fi', 'ТВ 4K с AirPlay', 'Флип-чарт по запросу', 'Ресепшн для гостей'] },
+        { name: 'Лекторий',        seats: 20, price: '3 450 ₽/час', features: ['Wi-Fi', 'Проектор FullHD', 'Звуковое оборудование', 'Apple TV'] },
+      ];
+
+      box.innerHTML = `
+        <!-- ГЕРОЙ -->
+        <section class="loc-hero">
+          <div class="loc-hero-head">
+            <h1>${place.name}</h1>
+            <p class="loc-address">${place.address}</p>
+          </div>
+          <div class="loc-stats">
+            <div class="stat">
+              <div class="stat-num">20</div>
+              <div class="stat-label">рабочих мест</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">12</div>
+              <div class="stat-label">часов в день</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">${place.price} ₽</div>
+              <div class="stat-label">от / час</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ВКЛЮЧЕНО -->
+        <section style="margin-top:24px">
+          <h2>Что включено</h2>
+          <div class="features">
+            ${features.map(f => `
+              <div class="feature">
+                <div class="feature-icon">${f.icon}</div>
+                <h3>${f.title}</h3>
+                <p class="muted">${f.text}</p>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <!-- ТАРИФЫ -->
+        <section style="margin-top:24px">
+          <h2>Тарифы</h2>
+          <div class="tariffs">
+            ${tariffs.map(t => `
+              <div class="tariff ${t.highlight ? 'tariff-highlight' : ''}">
+                <div class="tariff-period">${t.period}</div>
+                <h3 class="tariff-name">${t.name}</h3>
+                <div class="tariff-price">${t.price}</div>
+                <ul class="tariff-features">
+                  ${t.features.map(x => `<li>${x}</li>`).join('')}
+                </ul>
+                <button class="btn ${t.highlight ? '' : 'secondary'} tariff-btn" data-tariff="${t.name}">
+                  Выбрать
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <!-- ПЕРЕГОВОРНЫЕ -->
+        <section style="margin-top:24px">
+          <h2>Переговорные</h2>
+          <div class="rooms">
+            ${rooms.map(r => `
+              <div class="panel room">
+                <div class="room-head">
+                  <h3>${r.name}</h3>
+                  <span class="room-seats">на ${r.seats} мест</span>
+                </div>
+                <ul class="room-features">
+                  ${r.features.map(x => `<li>${x}</li>`).join('')}
+                </ul>
+                <div class="room-price">${r.price}</div>
+                <a class="btn secondary" href="booking.html?id=${place.id}">Забронировать</a>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+
+        <!-- БРОНИРОВАНИЕ ПО ЧАСАМ -->
+        <section class="panel" style="margin-top:24px">
+          <h2>Забронировать время</h2>
+          <p class="muted">Выберите дату и часы — оплата имитируется, бронь появится в профиле.</p>
+          <div class="btn-row">
+            <a class="btn" href="booking.html?id=${place.id}">Перейти к бронированию →</a>
+            <a class="btn secondary" href="map.html">Показать на карте</a>
+          </div>
+        </section>
+
+        <!-- МИНИ-КАРТА -->
+        <section class="panel" style="margin-top:24px">
+          <h2>Расположение</h2>
+          <div id="mini-map">
+            <div class="map-error">Загрузка карты…</div>
+          </div>
+        </section>
+
+        <!-- КОНТАКТЫ -->
+        <section class="panel" style="margin-top:24px">
+          <h2>Контакты</h2>
+          <div class="contacts">
+            <div><b>Адрес:</b> ${place.address}</div>
+            <div><b>Телефон:</b> +7 (800) 000-00-00</div>
+            <div><b>E-mail:</b> hello@coworkspace.ru</div>
+            <div><b>Время работы:</b> ежедневно, 9:00–21:00</div>
+          </div>
+          <div class="btn-row">
+            <a class="btn" href="booking.html?id=${place.id}">Забронировать</a>
+            <a class="btn secondary" href="profile.html">Мои брони</a>
+          </div>
+        </section>
+      `;
+
+      // Клик по тарифу → на страницу бронирования
+      box.querySelectorAll('.tariff-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          toast(`Тариф «${btn.dataset.tariff}» выбран — переходим к бронированию`);
+          location.href = `booking.html?id=${place.id}`;
+        });
+      });
+
+      // Мини-карта
+      const miniEl = document.getElementById('mini-map');
+      function buildMini() {
+        try {
+          const map = new ymaps.Map('mini-map', {
+            center: [place.lat, place.lng],
+            zoom: 14,
+            controls: ['zoomControl'],
+          });
+          map.geoObjects.add(new ymaps.Placemark(
+            [place.lat, place.lng],
+            { hintContent: place.name, balloonContentHeader: place.name, balloonContentBody: place.address },
+            { preset: 'islands#violetIcon' }
+          ));
+        } catch (e) {
+          console.error(e);
+          miniEl.innerHTML = '<div class="map-error">Не удалось отобразить карту. Проверьте API-ключ.</div>';
+        }
+      }
+      if (typeof ymaps !== 'undefined') {
+        ymaps.ready(buildMini);
+      } else {
+        setTimeout(() => {
+          if (typeof ymaps !== 'undefined') ymaps.ready(buildMini);
+          else miniEl.innerHTML = '<div class="map-error">Не удалось загрузить Яндекс.Карты. Проверьте API-ключ.</div>';
+        }, 500);
+      }
+    });
+  </script>
+</body>
+</html>
